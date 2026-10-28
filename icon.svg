@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64" role="img" aria-label="Arknights agent preset">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d2633"/>
+      <stop offset="1" stop-color="#0b1016"/>
+    </linearGradient>
+  </defs>
+  <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="url(#bg)"/>
+  <rect x="1.5" y="1.5" width="61" height="61" rx="12.5" ry="12.5" fill="none" stroke="#2f4256" stroke-width="1"/>
+  <circle cx="16" cy="46" r="3.6" fill="#5ad1c8"/>
+  <path d="M16 42.4 L16 30 L30 30 L30 20 L43 20" fill="none" stroke="#5ad1c8" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M39 13.2 L51 20 L39 26.8 Z" fill="#5ad1c8"/>
+  <path d="M45 36 l2.7 5.4 6 .9 -4.3 4.2 1 5.9 -5.4-2.8 -5.4 2.8 1-5.9 -4.3-4.2 6-.9 Z" fill="#f5c451"/>
+</svg>

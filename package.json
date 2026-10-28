@@ -1,0 +1,31 @@
+{
+  "name": "@local/arknights-agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Arknights operations agent preset for DeepSeek Harness: fight requested stages, push main story, run Integrated Strategies, plus 7 query and troubleshooting tools (stages, copilot solutions, screenshot, device, game, emulator, logs)",
+  "license": "MIT",
+  "exports": {
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md"
+  ],
+  "meta": {
+    "title": "明日方舟",
+    "description": "明日方舟代理指挥智能体：打关卡/推关/肉鸽 + 7 个查询排查工具（关卡、作业站、截图、设备、游戏、模拟器、日志）。"
+  },
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  }
+}
