@@ -1,11 +1,11 @@
 /**
- * dsh-arknights-agent（「明日方舟」智能体预设 bundle）的包完整性离线测试。
+ * dsh-arknights-agent（「明日方舟」智能体预设 bundle，1.0.0）的包完整性离线测试。
  *
  * 只读 bundle 自己的交付文件：package.json / cordis.patch.yml / locale/{zh,en}.json /
- * icon.svg / README.md / .gitignore。不安装 bundle、不改任何文件、不联网。
+ * icon.svg / README.md / .gitignore / DO-NOT-DELETE.txt。不安装 bundle、不改任何文件、不联网。
  *
- * 设计原则：文件缺失时给出「哪个文件缺、在哪个目录」的明确失败，方便 Lead 判断
- * bundle 是否完整（预设激活失败在客户端只显示 broken，这里是最早的完整性防线）。
+ * 设计原则：文件缺失或 patch 与 1.0.0 工具面（13 全局 + 2 预设 + 10 PRTS）不一致时，
+ * 给出「哪个文件/哪段文本不对」的明确失败——预设激活失败在客户端只显示 broken，这里是最早的防线。
  */
 
 import { test } from 'node:test';
@@ -26,13 +26,11 @@ const REQUIRED_FILES = [
   'icon.svg',
   'README.md',
   '.gitignore',
+  'DO-NOT-DELETE.txt',
 ];
 
-/**
- * 预设工具入口 URL 的**形态**（不写死具体用户目录：换机器只需改 cordis.patch.yml）。
- * 要求 `file:///` 绝对路径 + `/lib/preset/index.js` + ESM 缓存标记 `?v=N`。
- */
-const PRESET_TOOL_URL_PATTERN = /name:\s*'file:\/\/\/[^']+\/lib\/preset\/index\.js\?v=(\d+)'/;
+/** 1.0.0 预设工具入口的完整形态（安装路径与 ?v=3 都是发布契约的一部分）。 */
+const PRESET_TOOL_URL = "name: 'file:///C:/Users/11210/dsh-bundles/arknights/lib/preset/index.js?v=3'";
 
 /** package.json 缓存（每个测试都读一遍没必要）。 */
 let cachedPackageJson = null;
@@ -78,6 +76,22 @@ async function packageJson() {
   return cachedPackageJson;
 }
 
+/** 取 patch 文本（多处断言复用）。 */
+async function readPatch() {
+  return readRequired('cordis.patch.yml');
+}
+
+/** 取 persona 前缀文本（从 `prefix: |` 到下一个同级 `- id:`）。 */
+async function personaText() {
+  const yaml = await readPatch();
+  const start = yaml.indexOf('prefix: |');
+  assert.ok(start > 0, 'cordis.patch.yml 缺少 persona 的 prefix: |');
+  const rest = yaml.slice(start);
+  const end = rest.indexOf('\n          - id: agent-instructions');
+  assert.ok(end > start, 'persona 区块后应紧跟 agent-instructions 行');
+  return rest.slice(0, end);
+}
+
 // —— 完整性守卫 ——
 
 test('bundle: 交付文件齐全（缺任何一个都明确失败）', async () => {
@@ -89,26 +103,24 @@ test('bundle: 交付文件齐全（缺任何一个都明确失败）', async () 
       missing.push(relative);
     }
   }
-  assert.deepEqual(
-    missing,
-    [],
-    `预设 bundle 不完整，缺少：${missing.join('、')}（目录 ${PACKAGE_ROOT}）`,
-  );
+  assert.deepEqual(missing, [], `预设 bundle 不完整，缺少：${missing.join('、')}（目录 ${PACKAGE_ROOT}）`);
   const readme = await readRequired('README.md');
-  assert.ok(readme.trim().length > 500, `README.md 内容过短（${readme.trim().length} 字符），应说明用途/安装/工具/排障`);
+  assert.ok(readme.trim().length > 1500, `README.md 内容过短（${readme.trim().length} 字符），应说明安装/预设/工具/白名单/排障`);
 });
 
 // —— package.json ——
 
-test('package.json: 名称/版本/私有/ESM/bundle 声明', async () => {
+test('package.json: 名称/版本 1.0.0/私有/ESM/bundle 声明', async () => {
   const pkg = await packageJson();
   assert.equal(pkg.name, '@local/arknights-agent');
-  assert.equal(pkg.version, '0.1.0');
+  assert.equal(pkg.version, '1.0.0');
   assert.equal(pkg.private, true);
   assert.equal(pkg.type, 'module');
   assert.equal(pkg.license, 'MIT');
-  assert.equal(pkg.description.length > 40, true, 'description 应说明这是什么 bundle');
+  assert.ok(pkg.description.length > 80, 'description 应说明这是什么 bundle 与工具面');
   assert.match(pkg.description, /Arknights operations agent/);
+  assert.match(pkg.description, /ark_diag/);
+  assert.match(pkg.description, /ark_solutions/);
   assert.equal(pkg.dsh?.bundle?.patch, './cordis.patch.yml');
   assert.equal(pkg.scripts?.test, 'node --test "test/*.test.js"');
 });
@@ -126,44 +138,71 @@ test('package.json: files 覆盖 patch/locale/icon/README，exports 暴露 local
   assert.equal(exports['.'], undefined, 'bundle 没有自己的 JS，不应有 "." 入口');
 });
 
-test('package.json: meta.title 为「明日方舟」，meta.description 提到 7 个查询排查工具', async () => {
+test('package.json: meta.title 为「明日方舟」，description 与新工具面一致（2 预设 + 13 全局）', async () => {
   const pkg = await packageJson();
   assert.equal(pkg.meta?.title, '明日方舟');
   assert.equal(typeof pkg.meta?.description, 'string');
-  assert.match(pkg.meta.description, /7 个查询排查工具/);
-  assert.match(pkg.meta.description, /关卡、作业站、截图、设备、游戏、模拟器、日志/);
+  assert.match(pkg.meta.description, /2 个/);
+  assert.match(pkg.meta.description, /ark_diag\/ark_solutions/);
+  assert.match(pkg.meta.description, /日常/);
+  assert.match(pkg.meta.description, /账本/);
+  assert.equal(pkg.meta.description.includes('7 个'), false, 'meta.description 不应再提 0.2.0 的 7 个工具');
 });
 
 // —— cordis.patch.yml ——
 
 test('cordis.patch.yml: 预设行关键字段', async () => {
-  const yaml = await readRequired('cordis.patch.yml');
+  const yaml = await readPatch();
   assert.match(yaml, /^[ ]*- id: preset-arknights$/m, '缺少预设行 id: preset-arknights');
   assert.match(yaml, /^[ ]*name: '@deepseek-ai\/dsh-agent-preset'$/m, '预设行 name 应为 @deepseek-ai/dsh-agent-preset');
   assert.match(yaml, /^[ ]*id: arknights$/m, '缺少预设 config.id: arknights');
   assert.match(yaml, /^[ ]*name: 明日方舟$/m, '缺少预设显示名「明日方舟」');
   assert.match(yaml, /^[ ]*order: 6$/m, '预设 order 应为 6');
-  assert.match(yaml, /^[ ]*description: 打关卡\/推关\/肉鸽/m, '缺少预设 description');
+  assert.match(yaml, /^[ ]*description: 打关\/推关\/肉鸽\/日常/m, '预设 description 应说明打关/推关/肉鸽/日常');
+  assert.match(yaml, /ark_diag\/ark_solutions/, '预设 description 应提到 2 个预设工具');
 });
 
-test('cordis.patch.yml: 预设工具入口 URL 与全局工具白名单', async () => {
-  const yaml = await readRequired('cordis.patch.yml');
-  // 入口必须是 file:// 绝对路径 + /lib/preset/index.js + ESM 缓存标记 `?v=N`
-  // （改 lib/preset 后要 bump，所以这里只校验形态，不写死具体用户目录）
-  const entry = PRESET_TOOL_URL_PATTERN.exec(yaml);
-  assert.ok(entry !== null, "缺少预设工具入口（形态应为 name: 'file:///<安装路径>/lib/preset/index.js?v=N'）");
-  assert.ok(Number(entry[1]) >= 1, 'ESM 缓存标记 ?v= 必须是 >= 1 的整数');
+test('cordis.patch.yml: 预设工具入口 URL 精确为 ?v=3，且工具行 id 正确', async () => {
+  const yaml = await readPatch();
+  assert.ok(yaml.includes(PRESET_TOOL_URL), `预设工具入口应为：${PRESET_TOOL_URL}`);
   assert.match(yaml, /^[ ]*- id: arknights-preset-tools$/m, '缺少 arknights-preset-tools 工具行');
-  assert.ok(yaml.includes("name: '@deepseek-ai/dsh-agent-preset'"), '缺少预设行 name');
-  // 白名单必须挂在 allowGlobalToolPrefixes 下，且正好是 ark_ / prts_ / input_
+  assert.equal(yaml.includes('?v=2'), false, '1.0.0 不应再引用 ?v=2');
+  assert.equal(yaml.includes('?v=4'), false, '1.0.0 的缓存标记应为 ?v=3');
+});
+
+test('cordis.patch.yml: 全局工具白名单恰好 ark_ / prts_ / input_', async () => {
+  const yaml = await readPatch();
   const block = /allowGlobalToolPrefixes:\s*\r?\n((?:[ ]+- \S+\r?\n)+)/.exec(yaml);
   assert.ok(block !== null, '缺少 allowGlobalToolPrefixes 列表');
   const prefixes = [...block[1].matchAll(/- (\S+)/g)].map((match) => match[1]);
   assert.deepEqual(prefixes, ['ark_', 'prts_', 'input_']);
 });
 
+test('cordis.patch.yml: 预设工具行 config 覆盖路径/日志/截图/超时/白名单键', async () => {
+  const yaml = await readPatch();
+  for (const key of [
+    'maaPath:',
+    'pythonPath:',
+    'userDir:',
+    'adbPath:',
+    'address:',
+    'mumuInstallPath:',
+    'managerPath:',
+    'vmIndex: 0',
+    'logFile:',
+    'screenshotDir:',
+    'maxScreenshots: 20',
+    'maxLogLines: 400',
+    'clientType: Official',
+    'launchTimeoutMs: 120000',
+  ]) {
+    assert.ok(yaml.includes(key), `预设工具行 config 缺 ${key}`);
+  }
+  assert.equal(yaml.includes('ledgerFile:'), false, '1.0.0 的预设不再使用 ledgerFile（账本归全局插件）');
+});
+
 test('cordis.patch.yml: base 插件行与默认工具行结构完整', async () => {
-  const yaml = await readRequired('cordis.patch.yml');
+  const yaml = await readPatch();
   for (const pluginId of [
     'persona',
     'agent-instructions',
@@ -190,28 +229,51 @@ test('cordis.patch.yml: base 插件行与默认工具行结构完整', async () 
   // plan mode / compaction 两组
   assert.match(yaml, /^[ ]*planMode: true$/m);
   assert.match(yaml, /^[ ]*compaction: true$/m);
-  assert.match(yaml, /Exit plan mode|exit_plan_mode/, 'plan-mode section 文本应存在');
+  assert.match(yaml, /exit_plan_mode/, 'plan-mode section 文本应存在');
 });
 
-test('cordis.patch.yml: persona 覆盖 9 条硬规则的关键约束', async () => {
-  const yaml = await readRequired('cordis.patch.yml');
+test('cordis.patch.yml: persona 写明工具面（13 全局 + 2 预设 + 10 PRTS）', async () => {
+  const persona = await personaText();
+  assert.match(persona, /13 个全局/);
+  assert.match(persona, /2 个预设工具/);
+  assert.match(persona, /10 个 prts_\*/);
+  assert.match(persona, /ark_diag/);
+  assert.match(persona, /ark_solutions/);
+});
+
+test('cordis.patch.yml: persona 覆盖确认/安全/难度/满星/排查/配置关键约束', async () => {
+  const persona = await personaText();
   for (const phrase of [
     'ark_status',
+    'confirm=false',
     'confirm=true',
     'difficulty=tough',
+    '-HARD',
     'medicine',
     'useSanityPotion',
+    '至纯源石',
+    '招聘许可',
+    '加急许可',
+    'analyze',
+    'execute',
     'stars=3',
     'ark_push',
     'ark_rogue',
-    'ark_screen',
-    'ark_log',
-    'ark_device',
-    'ark_emulator',
-    'skill',
+    'ark_stop',
+    'ark_box',
+    'E_BUSY',
+    'ark_diag(action=device)',
+    'ark_diag(action=logs)',
+    'ark_diag(action=screen)',
+    'ark_diag(action=probe)',
+    '16-16',
+    'skill arknights',
+    'cordis.patch.yml',
+    '重启 DSH',
   ]) {
-    assert.ok(yaml.includes(phrase), `persona 缺少关键约束：${phrase}`);
+    assert.ok(persona.includes(phrase), `persona 缺少关键约束：${phrase}`);
   }
+  assert.equal(persona.includes('ark_screen'), false, 'persona 不应再教模型调用旧工具 ark_screen');
 });
 
 // —— locale ——
@@ -224,12 +286,14 @@ test('locale/zh.json: meta 与 package.json meta 完全一致', async () => {
   });
 });
 
-test('locale/en.json: 英文标题/描述齐备且与中文不同', async () => {
+test('locale/en.json: 英文标题/描述齐备、与新工具面一致且与中文不同', async () => {
   const pkg = await packageJson();
   const en = await readJson('locale/en.json');
   assert.equal(en.meta?.title, 'Arknights');
   assert.equal(typeof en.meta?.description, 'string');
   assert.match(en.meta.description, /^Arknights operations agent:/);
+  assert.match(en.meta.description, /ark_diag/);
+  assert.match(en.meta.description, /ark_solutions/);
   assert.notEqual(en.meta.description, pkg.meta.description);
 });
 
@@ -247,15 +311,33 @@ test('icon.svg: 是合法的 SVG 外壳（64×64，去 BOM 后以 <svg 开头）
 
 // —— README ——
 
-test('README.md: 说明预设/安装/工具/排障这几个关键面向', async () => {
+test('README.md: 说明安装/预设/工具/白名单/排障这几个关键面向', async () => {
   const readme = await readRequired('README.md');
   for (const phrase of [
     'install_bundle',
     'arknights-preset-activation.json',
-    '7 个',
+    '2 个',
+    '13 个',
+    '10 个',
     '白名单',
-    '?v=',
+    '?v=3',
+    'allowGlobalToolPrefixes',
+    'ark_diag',
+    'ark_solutions',
+    '重启 DSH',
   ]) {
     assert.ok(readme.includes(phrase), `README.md 缺少关键说明：${phrase}`);
   }
+  assert.equal(readme.includes('?v=2'), false, 'README 不应再提 0.2.0 的 ?v=2');
+  assert.equal(readme.includes('ark_screen'), false, 'README 不应再列旧工具 ark_screen');
+});
+
+test('版本一致性: package 1.0.0、patch ?v=3 与 README 描述一致', async () => {
+  const pkg = await packageJson();
+  assert.equal(pkg.version, '1.0.0');
+  const yaml = await readPatch();
+  assert.ok(yaml.includes('?v=3'));
+  const readme = await readRequired('README.md');
+  assert.ok(readme.includes('1.0.0'), 'README 应标注 bundle 版本 1.0.0');
+  assert.ok(readme.includes('?v=3'), 'README 应说明当前 ESM 缓存标记是 ?v=3');
 });

@@ -6,10 +6,11 @@ junction: %DSH_HOME%\profiles\desktop\node_modules\@local\arknights-agent
 bundle  : @local/arknights-agent  (「明日方舟」智能体预设 preset-arknights)
 
 **前置依赖**：预设里的工具行通过
-    file:///C:/Users/11210/dsh-bundles/arknights/lib/preset/index.js?v=2
-挂载 @local/arknights 的预设作用域入口。所以 `%USERPROFILE%\dsh-bundles\arknights`
-必须存在；那条 file:// 是**本机绝对路径**，换机器/挪目录时要同步改本目录的
-cordis.patch.yml，否则预设显示「加载失败」（客户端只显示 broken，不报原因）。
+    file:///C:/Users/11210/dsh-bundles/arknights/lib/preset/index.js?v=3
+挂载 @local/arknights 的预设作用域入口（预设内 2 个工具：ark_diag / ark_solutions）。所以
+`%USERPROFILE%\dsh-bundles\arknights` 必须存在；那条 file:// 是**本机绝对路径**，
+换机器/挪目录时要同步改本目录的 cordis.patch.yml，否则预设显示「加载失败」
+（客户端只显示 broken，不报原因）。
 
 Deleting or moving this directory removes the 明日方舟 preset from the roster until the
 bundle is reinstalled with:
@@ -28,7 +29,8 @@ in the source is what stops the sync from deleting it.
 
 只改 cordis.patch.yml 的配置值：把本 bundle 关开一次即可（不需要重启）。
 改了 `%USERPROFILE%\dsh-bundles\arknights\lib\preset\` 的代码：把本 patch 里的
-`?v=2` 加一，再把本 bundle 关开一次（Node 按完整 URL 缓存 ESM 模块）。
+`?v=3` 加一（`?v=4`），再把本 bundle 关开一次，或直接重启 DSH
+（Node 按完整 URL 缓存 ESM 模块）。
 
 排查「预设加载失败」：先看 %TEMP%\arknights-preset-activation.json
 （ok / tools / maskedGlobals / 错误栈）。

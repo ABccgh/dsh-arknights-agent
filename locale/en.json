@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Arknights",
-    "description": "Arknights operations agent: fight/push/roguelike plus 7 query & troubleshooting tools (stages, copilot solutions, screenshot, device, game, emulator, logs)."
+    "description": "Arknights operations agent: fight/push/roguelike, daily routines (award/credit/recruitment/base), warehouse & operator-box snapshots, stage/material/drop-rate lookups and farming plans; plus 2 preset-scope diagnostics & copilot tools (ark_diag / ark_solutions) with a stage ledger and two-step confirmation."
   }
 }
